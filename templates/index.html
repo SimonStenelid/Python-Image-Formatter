@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Formatter - Bulk Upload</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 60px 20px;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background-color: #f8f9ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background-color: #f0f2ff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            color: #ddd;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        .file-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .selected-files {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .file-list {
+            list-style: none;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            color: #555;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+
+        .alert-error {
+            background-color: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+
+        .loading {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .info-box {
+            background: #f0f2ff;
+            border: 1px solid #e0e6ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        .info-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .info-text {
+            color: #666;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Image Formatter</h1>
+        <p class="subtitle">Upload your images and get them formatted to 1200×1200 canvas</p>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-error">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form id="uploadForm" action="/process" method="post" enctype="multipart/form-data">
+            <div class="upload-area" id="uploadArea">
+                <span class="upload-icon">📁</span>
+                <div class="upload-text">Click to select images or drag and drop</div>
+                <div class="upload-subtext">Supports JPG, PNG, TIFF, BMP, WebP</div>
+                <input type="file" name="files" id="fileInput" class="file-input" multiple accept=".jpg,.jpeg,.png,.tiff,.tif,.bmp,.webp">
+            </div>
+
+            <div class="selected-files" id="selectedFiles">
+                <h3>Selected Files:</h3>
+                <ul class="file-list" id="fileList"></ul>
+            </div>
+
+            <button type="submit" class="submit-btn" id="submitBtn" disabled>
+                Format Images (1200×1200)
+            </button>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div id="loadingText">Processing your images...</div>
+            </div>
+        </form>
+
+        <div class="info-box">
+            <div class="info-title">How it works:</div>
+            <div class="info-text">
+                • Upload multiple image files (max 100MB total)<br>
+                • Each image is centered on a 1200×1200 transparent canvas<br>
+                • Images larger than 1200×1200 are resized to fit (maintains aspect ratio)<br>
+                • High-quality processing preserves image quality<br>
+                • Download processed images as a ZIP file
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const selectedFiles = document.getElementById('selectedFiles');
+        const fileList = document.getElementById('fileList');
+        const submitBtn = document.getElementById('submitBtn');
+        const uploadForm = document.getElementById('uploadForm');
+        const loading = document.getElementById('loading');
+
+        // Handle drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            fileInput.files = files;
+            updateFileList();
+        });
+
+        // Handle file selection
+        fileInput.addEventListener('change', updateFileList);
+
+        function updateFileList() {
+            const files = fileInput.files;
+            fileList.innerHTML = '';
+
+            if (files.length > 0) {
+                selectedFiles.style.display = 'block';
+                submitBtn.disabled = false;
+
+                Array.from(files).forEach(file => {
+                    const li = document.createElement('li');
+                    li.className = 'file-item';
+                    li.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+                    fileList.appendChild(li);
+                });
+            } else {
+                selectedFiles.style.display = 'none';
+                submitBtn.disabled = true;
+            }
+        }
+
+        // Handle form submission
+        uploadForm.addEventListener('submit', (e) => {
+            const fileCount = fileInput.files.length;
+            submitBtn.style.display = 'none';
+            loading.style.display = 'block';
+
+            // Update loading text with file count
+            const loadingText = document.getElementById('loadingText');
+            loadingText.textContent = `Processing ${fileCount} image${fileCount !== 1 ? 's' : ''}...`;
+
+            // Animate processing dots
+            let dots = 0;
+            const loadingInterval = setInterval(() => {
+                dots = (dots + 1) % 4;
+                const dotString = '.'.repeat(dots);
+                loadingText.textContent = `Processing ${fileCount} image${fileCount !== 1 ? 's' : ''}${dotString}`;
+            }, 500);
+
+            // Store interval to clear it if needed
+            window.loadingInterval = loadingInterval;
+
+            // Use XMLHttpRequest to detect when response arrives
+            const xhr = new XMLHttpRequest();
+            const formData = new FormData(uploadForm);
+
+            xhr.open('POST', uploadForm.action, true);
+            xhr.responseType = 'blob';
+
+            xhr.onload = function() {
+                // Clear the loading animation
+                if (window.loadingInterval) {
+                    clearInterval(window.loadingInterval);
+                }
+
+                if (xhr.status === 200) {
+                    // Show completion message
+                    loadingText.textContent = 'Processing complete! Download starting...';
+
+                    // Create download link for the blob
+                    const blob = xhr.response;
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'formatted_images.zip';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+
+                    // Reset UI after download
+                    setTimeout(() => {
+                        loading.style.display = 'none';
+                        submitBtn.style.display = 'inline-block';
+                        submitBtn.disabled = false;
+
+                        // Reset file input
+                        fileInput.value = '';
+                        selectedFiles.style.display = 'none';
+                        submitBtn.disabled = true;
+                    }, 2000);
+                } else {
+                    // Handle error
+                    loadingText.textContent = 'Error processing images';
+                    setTimeout(() => {
+                        loading.style.display = 'none';
+                        submitBtn.style.display = 'inline-block';
+                        submitBtn.disabled = false;
+                    }, 2000);
+                }
+            };
+
+            xhr.onerror = function() {
+                if (window.loadingInterval) {
+                    clearInterval(window.loadingInterval);
+                }
+                loadingText.textContent = 'Error processing images';
+                setTimeout(() => {
+                    loading.style.display = 'none';
+                    submitBtn.style.display = 'inline-block';
+                    submitBtn.disabled = false;
+                }, 2000);
+            };
+
+            // Send the request
+            xhr.send(formData);
+
+            // Prevent default form submission
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>
