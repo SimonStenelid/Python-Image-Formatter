@@ -1,0 +1,11 @@
+*.pyc
+__pycache__/
+.env
+.git/
+.DS_Store
+*.log
+test_images/
+output_test/
+1 (1).jpg
+single_test_transparent.png
+.claude/
